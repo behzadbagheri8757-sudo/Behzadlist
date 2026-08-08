@@ -82,7 +82,7 @@ body {
 
 .product-image {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 200px;
   object-fit: contain;
   background: #f0f0f0;
   display: block;
