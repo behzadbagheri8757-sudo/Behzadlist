@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>لیست قیمت محصولات</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <img class="logo" src="images/logo.png" alt="لوگو" onerror="this.style.display='none'" />
+      <span class="brand-title">حبوبات و خشکبار باقری</span>
+    </div>
+    <div class="clock-box">
+      <div class="jalali-date" id="jalaliDate">—</div>
+      <div class="live-time" id="liveTime">—</div>
+    </div>
+  </header>
+
+  <main class="product-list" id="productList"></main>
+
+  <script src="products.js"></script>
+  <script src="script.js"></script>
+  <script>
+    startLiveClock("jalaliDate", "liveTime");
+    renderProducts(PRODUCTS, document.getElementById("productList"));
+  </script>
+</body>
+</html>

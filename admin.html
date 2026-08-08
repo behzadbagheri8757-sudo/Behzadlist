@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>پنل مدیریت قیمت‌ها</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- صفحه ورود با پین ساده — این یک قفل امنیتی واقعی نیست، فقط از دیدن تصادفی توسط مشتری جلوگیری می‌کند -->
+  <div class="pin-gate" id="pinGate">
+    <h2 style="color:var(--gold); margin:0;">پنل مدیریت</h2>
+    <p class="notice">کد ورود را وارد کنید</p>
+    <input type="password" inputmode="numeric" id="pinInput" maxlength="8" placeholder="••••" />
+    <button class="btn-primary" onclick="checkPin()">ورود</button>
+    <p class="notice" id="pinMsg" style="color:var(--rust);"></p>
+    <p class="notice">پیش‌فرض: 1234 (بعد از ورود می‌توانید تغییرش دهید)<br />
+      ⚠️ این کد فقط از دیدن تصادفی صفحه توسط مشتری جلوگیری می‌کند و یک قفل امنیتی واقعی نیست، چون این صفحه استاتیک است و هرکسی که آدرس را بداند می‌تواند کد صفحه را ببیند.</p>
+  </div>
+
+  <div id="adminApp" style="display:none;">
+    <div class="admin-header">
+      <h1>مدیریت محصولات و قیمت‌ها</h1>
+      <p>تغییرات ابتدا فقط روی همین گوشی ذخیره می‌شود. برای اینکه مشتری هم آن‌ها را ببیند، پایین صفحه را نگاه کنید.</p>
+    </div>
+
+    <div class="admin-wrap">
+
+      <div class="admin-card">
+        <h3>محصولات</h3>
+        <div id="productForms"></div>
+        <div class="row-actions">
+          <button class="btn-primary" onclick="addProduct()">+ افزودن محصول جدید</button>
+          <button class="btn-ghost" onclick="discardDraft()">بازگردانی به آخرین نسخه منتشرشده</button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>پیش‌نمایش صفحه مشتری</h3>
+        <div id="previewList" style="display:flex; flex-direction:column; gap:14px;"></div>
+      </div>
+
+      <div class="admin-card export-box">
+        <h3>انتشار تغییرات برای مشتری</h3>
+        <p class="notice">
+          این صفحه (سایت GitHub Pages) استاتیک است، یعنی تغییراتی که بالا انجام دادید فقط روی همین گوشی ذخیره شده و مشتری آن را نمی‌بیند.
+          برای اینکه واقعاً منتشر شود، باید فایل <b>products.js</b> در مخزن گیت‌هاب جایگزین شود:
+        </p>
+        <ol class="notice">
+          <li>دکمه «کپی کد» یا «دانلود فایل» را بزنید.</li>
+          <li>در گیت‌هاب، وارد فایل products.js شوید و روی مداد ویرایش (Edit) بزنید.</li>
+          <li>محتوای قبلی را پاک کنید و کد جدید را جای‌گذاری (Paste) کنید.</li>
+          <li>پایین صفحه روی Commit changes بزنید. حدود چند ثانیه تا یک دقیقه بعد، لینک مشتری به‌روز می‌شود.</li>
+        </ol>
+        <textarea id="exportBox" readonly></textarea>
+        <div class="row-actions">
+          <button class="btn-primary" onclick="copyExport()">کپی کد</button>
+          <button class="btn-ghost" onclick="downloadExport()">دانلود فایل products.js</button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h3>تغییر کد ورود</h3>
+        <div class="field">
+          <label>کد جدید</label>
+          <input type="text" id="newPin" placeholder="مثلاً 4321" inputmode="numeric" />
+        </div>
+        <button class="btn-ghost" onclick="changePin()">ذخیره کد جدید</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="products.js"></script>
+  <script src="script.js"></script>
+  <script>
+    /* ---------------- ورود با پین ---------------- */
+    function getPin() {
+      return localStorage.getItem("admin_pin") || "1234";
+    }
+    function checkPin() {
+      const val = document.getElementById("pinInput").value;
+      if (val === getPin()) {
+        document.getElementById("pinGate").style.display = "none";
+        document.getElementById("adminApp").style.display = "block";
+        initAdmin();
+      } else {
+        document.getElementById("pinMsg").textContent = "کد اشتباه است.";
+      }
+    }
+    function changePin() {
+      const val = document.getElementById("newPin").value.trim();
+      if (!val) return;
+      localStorage.setItem("admin_pin", val);
+      document.getElementById("newPin").value = "";
+      showToast("کد ورود جدید ذخیره شد");
+    }
+
+    /* ---------------- مدیریت داده‌ها ---------------- */
+    let draft = [];
+
+    function loadDraft() {
+      const saved = localStorage.getItem("products_draft");
+      if (saved) {
+        try {
+          draft = JSON.parse(saved);
+          return;
+        } catch (e) {
+          /* اگر خراب بود، از products.js می‌خوانیم */
+        }
+      }
+      draft = JSON.parse(JSON.stringify(PRODUCTS));
+    }
+
+    function saveDraft() {
+      localStorage.setItem("products_draft", JSON.stringify(draft));
+      renderAll();
+    }
+
+    function discardDraft() {
+      if (!confirm("همه تغییرات ذخیره‌نشده روی این گوشی پاک شود و لیست به آخرین نسخه‌ی products.js برگردد؟")) return;
+      localStorage.removeItem("products_draft");
+      loadDraft();
+      renderAll();
+      showToast("بازگردانی شد");
+    }
+
+    function initAdmin() {
+      loadDraft();
+      renderAll();
+    }
+
+    /* ---------------- فرم‌های ویرایش ---------------- */
+    function renderForms() {
+      const wrap = document.getElementById("productForms");
+      wrap.innerHTML = "";
+      draft.forEach((p, i) => {
+        const card = document.createElement("div");
+        card.style.borderTop = i === 0 ? "none" : "1px solid var(--surface-line)";
+        card.style.paddingTop = i === 0 ? "0" : "14px";
+        card.style.marginTop = i === 0 ? "0" : "14px";
+
+        card.innerHTML = `
+          <div class="field">
+            <label>نام محصول</label>
+            <input type="text" value="${escapeHtml(p.name)}" oninput="updateField(${i},'name',this.value)" />
+          </div>
+          <div class="field">
+            <label>قیمت واحد (تومان، فقط عدد)</label>
+            <input type="number" value="${p.unitPrice ?? ""}" oninput="updateField(${i},'unitPrice',this.value)" />
+          </div>
+          <div class="field">
+            <label>قیمت بسته ۵ کیلویی (اختیاری — خالی بگذارید اگر ندارد)</label>
+            <input type="number" value="${p.pack5Price ?? ""}" oninput="updateField(${i},'pack5Price',this.value)" />
+          </div>
+          <div class="field">
+            <label>مسیر عکس</label>
+            <input type="text" value="${escapeHtml(p.image || "")}" oninput="updateField(${i},'image',this.value)" placeholder="images/xxx.jpg" />
+          </div>
+          <div class="row-actions">
+            <button class="btn-move" onclick="moveProduct(${i},-1)">▲ بالا</button>
+            <button class="btn-move" onclick="moveProduct(${i},1)">▼ پایین</button>
+            <button class="btn-danger" onclick="removeProduct(${i})">حذف محصول</button>
+          </div>
+        `;
+        wrap.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+
+    function updateField(index, field, value) {
+      if (field === "unitPrice") {
+        draft[index][field] = value === "" ? 0 : Number(value);
+      } else if (field === "pack5Price") {
+        draft[index][field] = value === "" ? null : Number(value);
+      } else {
+        draft[index][field] = value;
+      }
+      saveDraft();
+    }
+
+    function moveProduct(index, dir) {
+      const newIndex = index + dir;
+      if (newIndex < 0 || newIndex >= draft.length) return;
+      const tmp = draft[index];
+      draft[index] = draft[newIndex];
+      draft[newIndex] = tmp;
+      saveDraft();
+    }
+
+    function removeProduct(index) {
+      if (!confirm("این محصول حذف شود؟")) return;
+      draft.splice(index, 1);
+      saveDraft();
+    }
+
+    function addProduct() {
+      draft.push({ name: "محصول جدید", unitPrice: 0, pack5Price: null, image: "images/" });
+      saveDraft();
+    }
+
+    /* ---------------- پیش‌نمایش ---------------- */
+    function renderPreview() {
+      renderProducts(draft, document.getElementById("previewList"));
+    }
+
+    /* ---------------- خروجی products.js ---------------- */
+    function buildExportText() {
+      const lines = draft.map((p) => {
+        const pack = p.pack5Price === null || p.pack5Price === undefined || p.pack5Price === "" ? "null" : Number(p.pack5Price);
+        return `  {\n    name: ${JSON.stringify(p.name)},\n    unitPrice: ${Number(p.unitPrice) || 0},\n    pack5Price: ${pack},\n    image: ${JSON.stringify(p.image || "")}\n  }`;
+      });
+      return `const PRODUCTS = [\n${lines.join(",\n")}\n];\n`;
+    }
+
+    function renderExport() {
+      document.getElementById("exportBox").value = buildExportText();
+    }
+
+    function copyExport() {
+      const box = document.getElementById("exportBox");
+      box.select();
+      box.setSelectionRange(0, 999999);
+      navigator.clipboard?.writeText(box.value).then(
+        () => showToast("کد کپی شد"),
+        () => document.execCommand("copy") && showToast("کد کپی شد")
+      );
+    }
+
+    function downloadExport() {
+      const blob = new Blob([buildExportText()], { type: "text/javascript;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "products.js";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    /* ---------------- ابزار عمومی ---------------- */
+    function renderAll() {
+      renderForms();
+      renderPreview();
+      renderExport();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1800);
+    }
+  </script>
+</body>
+</html>
