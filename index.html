@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#ffffff">
+  <title>لیست قیمت | حبوبات و خشکبار باقری</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <img src="IMG_8431.png" alt="لوگو باقری" class="logo" id="logo"
+         onerror="this.style.display='none'">
+    <div class="datetime">
+      <div class="date" id="live-date">—</div>
+      <div class="time" id="live-time">—</div>
+    </div>
+  </header>
+
+  <main class="products" id="products-list">
+    <!-- محصولات اینجا لود می‌شوند -->
+  </main>
+
+  <script src="products.js"></script>
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initLiveClock();
+      renderCustomerProducts();
+    });
+  </script>
+</body>
+</html>
